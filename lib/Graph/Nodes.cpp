@@ -1463,6 +1463,15 @@ bool BatchedReduceMinNode::verify() const {
   return isValid;
 }
 
+bool BatchedReduceMaxNode::verify() const {
+  bool isValid = checkType(getResult(), getBatch().getElementType(), this);
+
+  isValid &=
+      expectCompareTrue("Invalid shape", getBatch().dims().size(), size_t(0),
+                        this, CompareOperatorGreaterThan<size_t>());
+  return isValid;
+}
+
 bool SparseLengthsSumNode::verify() const {
   return verifySparseLengthsSum(getResult(), getData(), getIndices(),
                                 getLengths());

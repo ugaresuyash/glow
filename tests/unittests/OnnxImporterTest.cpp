@@ -1493,6 +1493,126 @@ TEST_F(OnnxImporterTest, reduceMean2AvgPoolNoKeepDims) {
       checkConstFoldedOutput(netFilename, {"x"}, {&x}, {bindings.get(output)}));
 }
 
+/// Test loading ReduceMax op from a ONNX model.
+/// Input shape is 4D, two dimensions are reduced,Output shape is 4D.
+TEST_F(OnnxImporterTest, reduceMaxKeepDims) {
+  ExecutionEngine EE{};
+  auto &mod = EE.getModule();
+  Function *F = mod.createFunction("main");
+
+  std::string netFilename(GLOW_DATA_PATH
+                          "tests/models/onnxModels/reduceMax.onnxtxt");
+
+  PlaceholderBindings bindings;
+  Placeholder *output;
+  Tensor x(ElemKind::FloatTy, {2, 2, 2, 2});
+  x.getHandle() = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+
+  {
+
+    ONNXModelLoader onnxLD(netFilename, {"x"}, {&x.getType()}, *F);
+    output = EXIT_ON_ERR(onnxLD.getSingleOutput());
+    bindings.allocate(mod.getPlaceholders());
+
+    updateInputPlaceholdersByName(bindings, &mod, {"x"}, {&x});
+  }
+
+  auto *res = bindings.get(output);
+  EE.compile(CompilationMode::Infer);
+  EE.run(bindings);
+
+  auto result = res->getHandle();
+  std::vector<dim_t> expectedDims = {2, 2, 1, 1};
+  std::vector<float> expectedValues = {4, 8, 12, 16};
+
+  EXPECT_TRUE(result.dims().vec() == expectedDims);
+  for (dim_t i = 0; i < result.size(); i++) {
+    EXPECT_FLOAT_EQ(result.raw(i), expectedValues[i]);
+  }
+}
+
+/// Test loading ReduceMean op from a ONNX model.
+/// Input shape is 4D, two dimensions are reduced, targeting ReduceMean
+/// optimization using AvgPool. Output shape is 2D.
+TEST_F(OnnxImporterTest, reduceMaxNoKeepDims) {
+  ExecutionEngine EE{};
+  auto &mod = EE.getModule();
+  Function *F = mod.createFunction("main");
+
+  std::string netFilename(GLOW_DATA_PATH
+                          "tests/models/onnxModels/reduceMaxNoKeep.onnxtxt");
+
+  PlaceholderBindings bindings;
+  Placeholder *output;
+  Tensor x(ElemKind::FloatTy, {2, 2, 2, 2});
+  x.getHandle() = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+
+  {
+
+    ONNXModelLoader onnxLD(netFilename, {"x"}, {&x.getType()}, *F);
+    output = EXIT_ON_ERR(onnxLD.getSingleOutput());
+    bindings.allocate(mod.getPlaceholders());
+
+    updateInputPlaceholdersByName(bindings, &mod, {"x"}, {&x});
+  }
+
+  auto *res = bindings.get(output);
+  EE.compile(CompilationMode::Infer);
+  EE.run(bindings);
+
+  auto result = res->getHandle();
+  std::vector<dim_t> expectedDims = {2, 2};
+  std::vector<float> expectedValues = {
+      4,
+      8,
+      12,
+      16,
+  };
+
+  EXPECT_TRUE(result.dims().vec() == expectedDims);
+  for (dim_t i = 0; i < result.size(); i++) {
+    EXPECT_FLOAT_EQ(result.raw(i), expectedValues[i]);
+  }
+}
+
+/// Test loading ReduceMax op from a ONNX model.
+/// Input shape is 4D, two dimensions are reduced,Output shape is 4D.
+TEST_F(OnnxImporterTest, reduceMaxKeepDimsDefaultAxis) {
+  ExecutionEngine EE{};
+  auto &mod = EE.getModule();
+  Function *F = mod.createFunction("main");
+
+  std::string netFilename(
+      GLOW_DATA_PATH "tests/models/onnxModels/reduceMaxDefaultAxis.onnxtxt");
+
+  PlaceholderBindings bindings;
+  Placeholder *output;
+  Tensor x(ElemKind::FloatTy, {2, 2, 2, 2});
+  x.getHandle() = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+
+  {
+
+    ONNXModelLoader onnxLD(netFilename, {"x"}, {&x.getType()}, *F);
+    output = EXIT_ON_ERR(onnxLD.getSingleOutput());
+    bindings.allocate(mod.getPlaceholders());
+
+    updateInputPlaceholdersByName(bindings, &mod, {"x"}, {&x});
+  }
+
+  auto *res = bindings.get(output);
+  EE.compile(CompilationMode::Infer);
+  EE.run(bindings);
+
+  auto result = res->getHandle();
+  std::vector<dim_t> expectedDims = {1, 1, 1, 1};
+  std::vector<float> expectedValues = {16};
+
+  EXPECT_TRUE(result.dims().vec() == expectedDims);
+  for (size_t i = 0; i < result.size(); i++) {
+    EXPECT_FLOAT_EQ(result.raw(i), expectedValues[i]);
+  }
+}
+
 /// Test loading ReduceMin op from a ONNX model.
 /// Input shape is 4D, two dimensions are reduced,Output shape is 4D.
 TEST_F(OnnxImporterTest, reduceMinKeepDims) {
